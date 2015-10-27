@@ -5,7 +5,14 @@ package apu.scratch.hax;
 
 import java.io.File;
 import java.io.InputStream;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+import org.apache.http.HttpHost;
 import org.apache.http.client.CookieStore;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
@@ -16,6 +23,7 @@ import org.apache.http.cookie.Cookie;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.cookie.BasicClientCookie;
 import org.json.JSONArray;
@@ -35,6 +43,8 @@ public class GuiHackerBackend {
 	static CloseableHttpResponse resp;
 	static String csrfToken;
 
+	private static boolean useProxy = false;
+
 	public static void reset() {
 		try {
 			csrfToken = null;
@@ -52,27 +62,57 @@ public class GuiHackerBackend {
 		System.gc();
 	}
 
-	public static void init() {
-		globalConfig = RequestConfig.custom()
+	/**
+	 * DO NOT USE SUPER DANGEROUS
+	 */
+	public static SSLContext bypassSSLCertCheck() throws Exception {
+		SSLContext sslContext = SSLContext.getInstance("SSL");
+		sslContext.init(null, new TrustManager[] { new X509TrustManager() {
+			public X509Certificate[] getAcceptedIssuers() {
+				return null;
+			}
+
+			public void checkClientTrusted(X509Certificate[] certs,
+					String authType) {
+			}
+
+			public void checkServerTrusted(X509Certificate[] certs,
+					String authType) {
+			}
+		} }, new SecureRandom());
+		return sslContext;
+	}
+
+	public static void init() throws Exception {
+		RequestConfig.Builder configBuilder = RequestConfig.custom()
 				.setCookieSpec(CookieSpecs.BROWSER_COMPATIBILITY)
 				.setSocketTimeout(0).setConnectionRequestTimeout(0)
-				.setConnectTimeout(0).build();
+				.setConnectTimeout(0);
+		if (useProxy) {
+			configBuilder.setProxy(new HttpHost("localhost", 8888));
+		}
 
-		cookieStore = new BasicCookieStore();
+		globalConfig = configBuilder.build();
+
+		if (!useProxy) {
+			cookieStore = new BasicCookieStore();
+		}
 		BasicClientCookie lang = new BasicClientCookie("scratchlanguage", "en");
 		lang.setDomain(".scratch.mit.edu");
 		lang.setPath("/");
 		cookieStore.addCookie(lang);
 		// hacks activated in 3...2...1..
 
-		httpClient = HttpClients
+		HttpClientBuilder clientBuilder = HttpClients
 				.custom()
 				.setDefaultRequestConfig(globalConfig)
 				.setUserAgent(
-						"Mozilla/5.0 (Windows NT 6.1; WOW64)"
-								+ " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/"
-								+ "537.36").setDefaultCookieStore(cookieStore)
-				.build();
+						"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36")
+				.setDefaultCookieStore(cookieStore);
+		if (useProxy) {
+			clientBuilder.setSslcontext(bypassSSLCertCheck());
+		}
+		httpClient = clientBuilder.build();
 	}
 
 	public static void login(String username, char[] password) throws Exception {
@@ -168,24 +208,50 @@ public class GuiHackerBackend {
 	public static void hackThumbnail(int projectId, File thumbnail,
 			String mimeType) throws Exception {
 		System.out.print("Uploading thumbnail...");
+
+		// debug only, do not enable
+		// useProxy = true;
+		// init();
+
+		// the ST is sneaky :P
+		BasicClientCookie pid = new BasicClientCookie("projectId",
+				Integer.toString(projectId));
+		pid.setDomain(".scratch.mit.edu");
+		pid.setPath("/");
+		cookieStore.addCookie(pid);
+
+		// even more sneaky...
+		System.out.print("Refinding CSRF...");
+		for (Cookie c : cookieStore.getCookies()) {
+			if (c.getName().equals("scratchcsrftoken")) {
+				csrfToken = c.getValue();
+			}
+		}
+		System.out.println("Found CSRF: " + csrfToken);
+
 		HttpUriRequest thumb = RequestBuilder
 				.post()
 				.setUri("https://scratch.mit.edu/internalapi/project"
-						+ "/thumbnail/" + projectId
-						+ "/set/?v=v434a&_rnd=0.086444168325184")
+						+ "/thumbnail/" + projectId + "/set/?v=v440.3&_rnd="
+						+ Math.random())
 				.addHeader(
 						"Referer",
-						"https://cdn.scratch.mit.edu/scratchr2/static/__"
-								+ "6b70b0bfa023343400311915fef8f6cc__/Scratch.swf")
+						"https://cdn.scratch.mit.edu/scratchr2/static/__61560e08176805f6f84b8d1dd737d59b__/Scratch.swf")
 				.addHeader("Content-Type", mimeType)
 				.addHeader("X-CSRFToken", csrfToken)
-				.setEntity(new ProgressFileEntity(thumbnail, mimeType, new ProgressCallback() {
-					@Override
-					public void updateProgress(int progress) {
-						ThumbnailGuiHacker.INSTANCE.setProgress(progress);
-					}
-				}))
-				.build();
+				.addHeader("X-Requested-With", "ShockwaveFlash/19.0.0.226")
+				.addHeader("Origin", "https://cdn.scratch.mit.edu")
+				.addHeader("Accept", "*/*")
+				.addHeader("Accept-Language", "en-US,en;q=0.8")
+				.setEntity(
+						new ProgressFileEntity(thumbnail, "image/png",
+								new ProgressCallback() {
+									@Override
+									public void updateProgress(int progress) {
+										ThumbnailGuiHacker.INSTANCE
+												.setProgress(progress);
+									}
+								})).build();
 		resp = httpClient.execute(thumb);
 		System.out.println(resp.getStatusLine());
 		int statusCode = resp.getStatusLine().getStatusCode();

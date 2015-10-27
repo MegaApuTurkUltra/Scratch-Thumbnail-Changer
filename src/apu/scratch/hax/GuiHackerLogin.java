@@ -22,7 +22,7 @@ import javax.swing.UIManager;
 
 /**
  * Login screen
- * Generated using WindowBuilder for Eclipse
+ * 
  * @author "MegaApuTurkUltra"
  * 
  */

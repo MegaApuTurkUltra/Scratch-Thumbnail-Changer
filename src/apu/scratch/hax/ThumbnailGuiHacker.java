@@ -123,8 +123,8 @@ public class ThumbnailGuiHacker extends JFrame {
 	public boolean initAndLogin(String username, char[] password) {
 		setLoadingState(true);
 		GuiHackerBackend.reset();
-		GuiHackerBackend.init();
 		try {
+			GuiHackerBackend.init();
 			GuiHackerBackend.login(username, password);
 			return true;
 		} catch (Exception e) {
@@ -158,6 +158,7 @@ public class ThumbnailGuiHacker extends JFrame {
 			e.printStackTrace(new PrintWriter(stack));
 			JOptionPane.showMessageDialog(this, stack.toString(),
 					"Error Details", JOptionPane.ERROR_MESSAGE);
+			showExceptionDialog(e);
 		}
 		if (x == 2)
 			System.exit(-1);

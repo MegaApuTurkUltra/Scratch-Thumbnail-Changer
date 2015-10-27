@@ -63,9 +63,9 @@ public class GuiHackerFileChooser extends JPanel {
 
 			public boolean isFileAccepted(File f) {
 				if (ext == null)
-					return !f.isDirectory();
+					return !f.isDirectory() && f.exists();
 				for (String s : ext) {
-					if (f.getName().endsWith(s))
+					if (f.getName().endsWith(s) && f.exists())
 						return true;
 				}
 				return false;
@@ -126,7 +126,7 @@ public class GuiHackerFileChooser extends JPanel {
 						FileFilterType type = ((GuiHackerFileFilter) fileChooser
 								.getFileFilter()).type;
 						File f = fileChooser.getSelectedFile();
-						if (f == null)
+						if (f == null || f.isDirectory() || !f.exists())
 							return;
 						if (type == FileFilterType.GIF && !checkGifFrameRate(f))
 							return;
