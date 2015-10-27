@@ -255,6 +255,11 @@ public class GuiHackerBackend {
 		resp = httpClient.execute(thumb);
 		System.out.println(resp.getStatusLine());
 		int statusCode = resp.getStatusLine().getStatusCode();
+		InputStream in = resp.getEntity().getContent();
+		int i;
+		while ((i = in.read()) != -1) {
+			System.out.print((char) i);
+		}
 		resp.close();
 		if (statusCode != 200) {
 			throw new IllegalStateException("Response status is " + statusCode);

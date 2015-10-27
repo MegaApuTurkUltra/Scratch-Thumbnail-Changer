@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.lang.reflect.InvocationTargetException;
 
 import javax.swing.JDialog;
 import javax.swing.JFrame;
@@ -61,26 +62,28 @@ public class ThumbnailGuiHacker extends JFrame {
 	public static void main(String[] args) {
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+
+			SwingUtilities.invokeAndWait(new Runnable() {
+				@Override
+				public void run() {
+					loading = new JDialog(null,
+							"Super swaggy hacks in progress...",
+							ModalityType.MODELESS);
+					loading.setResizable(false);
+					loading.setLayout(new BorderLayout());
+					loading.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+					loadingP = new JProgressBar();
+					loadingP.setIndeterminate(true);
+					loading.add(loadingP, BorderLayout.CENTER);
+					loading.setSize(300, 60);
+					loading.setLocationRelativeTo(null);
+					loading.setType(Window.Type.UTILITY);
+					loading.setVisible(true);
+				}
+			});
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				loading = new JDialog(null,
-						"Super swaggy hacks in progress...",
-						ModalityType.APPLICATION_MODAL);
-				loading.setLayout(new BorderLayout());
-				loading.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-				loadingP = new JProgressBar();
-				loadingP.setIndeterminate(true);
-				loading.add(loadingP, BorderLayout.CENTER);
-				loading.setSize(300, 60);
-				loading.setLocationRelativeTo(null);
-				loading.setType(Window.Type.UTILITY);
-				loading.setVisible(true);
-			}
-		});
 		try {
 			Thread.sleep(500);
 		} catch (InterruptedException e1) {
@@ -138,13 +141,23 @@ public class ThumbnailGuiHacker extends JFrame {
 	}
 
 	public void setLoadingState(final boolean state) {
-		SwingUtilities.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				loading.setLocationRelativeTo(ThumbnailGuiHacker.this);
-				loading.setVisible(state);
-			}
-		});
+		try {
+			Runnable doRun = new Runnable() {
+				@Override
+				public void run() {
+					loading.setLocationRelativeTo(ThumbnailGuiHacker.this);
+					loading.setVisible(state);
+				}
+			};
+			if (SwingUtilities.isEventDispatchThread())
+				doRun.run();
+			else
+				SwingUtilities.invokeAndWait(doRun);
+		} catch (InvocationTargetException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void showExceptionDialog(Throwable e) {
@@ -261,8 +274,20 @@ public class ThumbnailGuiHacker extends JFrame {
 			}
 		}).start();
 	}
-	
-	public void setProgress(int progress){
-		loadingP.setValue(progress);
+
+	public void setProgress(final int progress) {
+		try {
+			SwingUtilities.invokeAndWait(new Runnable() {
+				@Override
+				public void run() {
+					loadingP.setValue(progress);
+
+				}
+			});
+		} catch (InvocationTargetException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 }
