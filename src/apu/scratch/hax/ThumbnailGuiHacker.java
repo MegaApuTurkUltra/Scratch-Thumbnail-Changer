@@ -42,6 +42,7 @@ public class ThumbnailGuiHacker extends JFrame {
 	public static Project selectedProject;
 	static JDialog loading;
 	static JProgressBar loadingP;
+	static boolean guiMode;
 
 	static {
 		Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
@@ -60,6 +61,51 @@ public class ThumbnailGuiHacker extends JFrame {
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
+		if(args.length == 0){
+			guiMode = true;
+			guiMain();
+			return;
+		}
+		guiMode = false;
+		String username = null, password = null, projectId = null, file = null;
+		for(int i = 0; i + 1 < args.length; i++){
+			if(args[i].equals("--username")){
+				username = args[i + 1];
+			} else if(args[i].equals("--password")){
+				password = args[i + 1];
+			} else if(args[i].equals("--projectId")){
+				projectId = args[i + 1];
+			} else if(args[i].equals("--file")){
+				file = args[i + 1];
+			}
+		}
+		if(username == null || password == null || projectId == null || file == null){
+			System.out.println("Usage: java -jar thumbnailguihacker.jar --username <username> --password <password> --projectId <projectId> --file <file>");
+			System.exit(-1);
+		}
+		
+		GuiHackerBackend.reset();
+		try {
+			GuiHackerBackend.init();
+			GuiHackerBackend.login(username, password.toCharArray());
+			
+			String mime = "image/png";
+			String ext = file.substring(file.lastIndexOf('.') + 1);
+			if(ext.equals("gif")){
+				mime = "image/gif";
+			} else if(ext.equals("jpg") || ext.equals("jpeg")){
+				mime = "image/jpeg";
+			}
+			
+			GuiHackerBackend.hackThumbnail(Integer.parseInt(projectId),
+				new File(file), mime);
+			System.out.println("\nDone");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public static void guiMain(){
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 
@@ -281,7 +327,6 @@ public class ThumbnailGuiHacker extends JFrame {
 				@Override
 				public void run() {
 					loadingP.setValue(progress);
-
 				}
 			});
 		} catch (InvocationTargetException e) {

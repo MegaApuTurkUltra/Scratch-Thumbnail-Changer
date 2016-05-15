@@ -5,8 +5,6 @@ package apu.scratch.hax;
 
 import java.io.File;
 import java.io.InputStream;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -66,7 +64,7 @@ public class GuiHackerBackend {
 	 * DO NOT USE SUPER DANGEROUS
 	 */
 	public static SSLContext bypassSSLCertCheck() throws Exception {
-		SSLContext sslContext = SSLContext.getInstance("SSL");
+		/*SSLContext sslContext = SSLContext.getInstance("SSL");
 		sslContext.init(null, new TrustManager[] { new X509TrustManager() {
 			public X509Certificate[] getAcceptedIssuers() {
 				return null;
@@ -80,7 +78,7 @@ public class GuiHackerBackend {
 					String authType) {
 			}
 		} }, new SecureRandom());
-		return sslContext;
+		return sslContext;*/ return null;
 	}
 
 	public static void init() throws Exception {
@@ -248,6 +246,10 @@ public class GuiHackerBackend {
 								new ProgressCallback() {
 									@Override
 									public void updateProgress(int progress) {
+										if(ThumbnailGuiHacker.INSTANCE == null){
+											System.out.print("\rUpload: " + progress + "%");
+											return;
+										}
 										ThumbnailGuiHacker.INSTANCE
 												.setProgress(progress);
 									}
